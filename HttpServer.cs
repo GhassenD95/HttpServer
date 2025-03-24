@@ -6,10 +6,12 @@ namespace HttpServerSimple;
 
 public class HttpServer
 {
-    private readonly byte[]? _buffer;
     public HttpServer()
     {
-        _buffer = new byte[1024];
+        Router router = new Router();
+        router.RegisterRoute("/", HandleRoot);
+        
+        var buffer = new byte[1024];
         Console.WriteLine("Starting HTTP server");
         
         //instance of class that listens to incoming connections on address/port
@@ -22,24 +24,35 @@ public class HttpServer
             //Accepts client request
             var socket = server.AcceptSocket();
             //read request data first 
-            socket.Receive(_buffer); 
-            StringBuilder builder = new StringBuilder();
-            builder.Append(Encoding.ASCII.GetString(_buffer, 0, _buffer.Length));   
-            String [] tokens = builder.ToString().Split(' ');
-
-            if (tokens[0] == "GET" && tokens[1] == "/")
-            {
-                string happyPath = "HTTP/1.1 200 OK\r\n\r\n"; // CRLF sequence
-                socket.Send(Encoding.ASCII.GetBytes(happyPath)); 
-    
-            }else if (tokens[0] == "GET")
-            {
-                string sadPath = "HTTP/1.1 404 NOT FOUND\r\n\r\n"; // CRLF sequence
-                socket.Send(Encoding.ASCII.GetBytes(sadPath)); 
-                
-            }
-            
+            socket.Receive(buffer);
+            var tokens = ParseRequest(buffer);
+            //
+            //
+            router.HandleRequest(socket, tokens);            
             socket.Close();
         }
     }
+
+    private static string[] ParseRequest(byte[] buffer)
+    {
+        var builder = new StringBuilder();
+        builder.Append(Encoding.ASCII.GetString(buffer, 0, buffer.Length));   
+        return builder.ToString().Split(' ');
+    }
+    
+    
+    private void HandleRoot(Socket socket, string[] tokens)
+    {
+        string response = "HTTP/1.1 200 OK\r\n"
+                          + "Content-Type: text/html\r\n"
+                          + "\r\n"
+                          + "<html><body><h1>Welcome to My Server</h1></body></html>";
+        socket.Send(Encoding.ASCII.GetBytes(response));
+    }
+
+    private void HandleFiles(Socket socket, string[] tokens)
+    {
+        
+    }
+
 }
