@@ -1,0 +1,16 @@
+### GET request to example server
+GET http://localhost:6969/
+
+###
+
+###
+GET http://localhost:6969/public/text.txt
+###
+
+### POST request with form data
+POST http://localhost:6969/post
+Content-Type: application/x-www-form-urlencoded
+
+username=john&password=12345
+
+###

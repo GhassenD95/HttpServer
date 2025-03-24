@@ -13,8 +13,8 @@ public class HttpServer
         Router router = new Router();
         router.RegisterRoute("/", HandleRoot);
         router.RegisterRoute("/public/text.txt", HandleFiles);
+        router.RegisterRoute("/post", HandlePost);
 
-        var buffer = new byte[1024];
         Console.WriteLine("Starting HTTP server");
 
         //instance of class that listens to incoming connections on address/port
@@ -24,6 +24,8 @@ public class HttpServer
 
         while (true)
         {
+            var buffer = new byte[4096];
+
             //Accepts client request
             var socket = server.AcceptSocket();
             //read request data first 
@@ -102,4 +104,68 @@ public class HttpServer
             _ => "application/octet-stream" // Default for unknown file types
         };
     }
+
+ private void HandlePost(Socket socket, string[] tokens)
+{
+    // The initial buffer already has the beginning of the request
+    // We need to extract the Content-Length to know how much data to read
+    string initialRequest = string.Join(" ", tokens);
+    
+    
+    // Combine the initial tokens with the rest of the request
+    string completeRequest = string.Join(" ", tokens);
+    Console.WriteLine("=== Full HTTP Request ===");
+    Console.WriteLine(completeRequest);
+    
+    // Split headers and body
+    string[] parts = completeRequest.Split(new string[] { "\r\n\r\n" }, 2, StringSplitOptions.None);
+    string headers = parts[0];
+    string body = parts.Length > 1 ? parts[1] : "";
+    
+    Console.WriteLine("=== Extracted Headers ===");
+    Console.WriteLine(headers);
+    
+    Console.WriteLine("=== Extracted Body ===");
+    Console.WriteLine(body);
+    
+    // Parse the form data
+    Dictionary<string, string> formData = new Dictionary<string, string>();
+    if (!string.IsNullOrEmpty(body))
+    {
+        string[] pairs = body.Split('&');
+        foreach (string pair in pairs)
+        {
+            string[] keyValue = pair.Split('=');
+            if (keyValue.Length == 2)
+            {
+                formData[keyValue[0]] = keyValue[1];
+            }
+        }
+    }
+    
+    // Build a nicer response showing the parsed data
+    StringBuilder responseBodyBuilder = new StringBuilder();
+    responseBodyBuilder.Append("<html><body>");
+    responseBodyBuilder.Append("<h1>Received Form Data</h1>");
+    responseBodyBuilder.Append("<table border='1'>");
+    responseBodyBuilder.Append("<tr><th>Key</th><th>Value</th></tr>");
+    
+    foreach (var item in formData)
+    {
+        responseBodyBuilder.Append($"<tr><td>{item.Key}</td><td>{item.Value}</td></tr>");
+    }
+    
+    responseBodyBuilder.Append("</table></body></html>");
+    string responseBody = responseBodyBuilder.ToString();
+    
+    // Send response
+    string response = "HTTP/1.1 200 OK\r\n"
+                      + "Content-Type: text/html\r\n"
+                      + $"Content-Length: {responseBody.Length}\r\n"
+                      + "\r\n"
+                      + responseBody;
+    
+    socket.Send(Encoding.ASCII.GetBytes(response));
+}
+
 }
